@@ -5,4 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Flag for diagnostic logging
+#define DEBUG_TRACE_EXECUTION
+
 #endif
