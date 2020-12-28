@@ -43,6 +43,7 @@ Value pop() {
  */
 static InterpretResult run() {
 // reads the byte at IP, *then* advances the pointer
+// eq to (*(vm.ip))++
 #define READ_BYTE() (*vm.ip++)
 
 // first, read the next byte at the IP, use that value to look up the constant
@@ -70,6 +71,8 @@ static InterpretResult run() {
   disassembleInstruction(vm.chunk, (int)(vm.ip - vm.chunk->code));
 #endif
     uint8_t instruction;
+    // this isn't the _fastest_ thing in the world, but it's better than non-standard C or hand written assembly
+    // Additional terms: "Direct threaded code", "jump table", "computed goto"
     switch (instruction = READ_BYTE()) {
       case OP_CONSTANT: {
         Value constant = READ_CONSTANT();
