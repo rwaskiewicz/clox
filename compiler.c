@@ -122,6 +122,39 @@ static void endCompiler() {
   emitReturn();
 }
 
+static void binary() {
+  // Remember the operator. It's already been consumed (and the LHS has been
+  // compiled already too)
+  TokenType operatorType = parser.previous.type;
+
+  // Compile the right operand
+  ParseRule* rule = getRule(operatorType);
+  parsePrecedence((Precedence)rule->precdence + 1);
+
+  // Emit the operator instruction. Note the LHS and RHS are on the stack 
+  // already
+  switch (operatorType) {
+    case TOKEN_PLUS: {
+      emitByte(OP_ADD);
+      break;
+    }
+    case TOKEN_MINUS: {
+      emitByte(OP_SUBTRACT);
+      break;
+    }
+    case TOKEN_STAR: {
+      emitByte(OP_MULTIPLY);
+      break;
+    }
+    case TOKEN_SLASH: {
+      emitByte(OP_DIVIDE);
+      break;
+    }
+    default:
+      return; // unreachable
+  }
+}
+
 /**
  * As far as the backend is concerned, there's nothing to a grouping, so
  * nothing gets emitted - it just allows a lower precedence expression to be
