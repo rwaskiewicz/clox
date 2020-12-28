@@ -14,6 +14,15 @@ typedef struct {
 
 Parser parser;
 
+Chunk *compilingChunk;
+
+/**
+ * Return the chunk we're writing
+ */
+static Chunk* currentChunk() {
+  return compilingChunk;
+}
+
 static void errorAt(Token* token, const char* message) {
   if (parser.panicMode) {
     return;
@@ -65,8 +74,29 @@ static void consume(TokenType type, const char* message) {
   errorAtCurrent(message);
 }
 
+static void emitByte(uint8_t byte) {
+  // note that the byte may be an opcode or an operand to an instruction
+  writeChunk(currentChunk(), byte, parser.previous.line);
+}
+
+static void emitBytes(uint8_t byte1, uint8_t byte2) {
+  emitByte(byte1);
+  emitByte(byte2);
+}
+
+static void emitReturn() {
+  // As of 17.3, we can only deal with expressions in the VM - we need to
+  // return this op code to print the result out
+  emitByte(OP_RETURN);
+}
+
+static void endCompiler() {
+  emitReturn();
+}
+
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
+  compilingChunk = chunk;
 
   parser.hadError = false;
   parser.panicMode = false;
@@ -75,5 +105,6 @@ bool compile(const char* source, Chunk* chunk) {
   advance();
   expression();
   consume(TOKEN_EOF, "Expect end of expression.");
+  endCompiler();
   return !parser.hadError;
 }
