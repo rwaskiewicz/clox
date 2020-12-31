@@ -26,9 +26,11 @@ struct ObjString {
   Obj obj;
   // allows us to know how much memory we've allocated without having to walk
   // the entire string to find the null terminator
-  int length; 
+  int length;
   char* chars;
 };
+
+ObjString* copyString(const char* chars, int length);
 
 // body uses `value` 2x - the argument expression is evaluated for each time
 // its used, which isn't ideal if the arg expr has side effects. As a result,
