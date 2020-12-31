@@ -17,6 +17,8 @@ typedef struct {
   // the stack (the last full item is technically at stackTop-1). IE stackTop
   // points to where the next item will go
   Value* stackTop;
+  // Head of our intrusive list for basic memory leak prevention
+  Obj* objects;
 } VM;
 
 typedef enum {
@@ -24,6 +26,8 @@ typedef enum {
   INTERPRET_COMPILE_ERROR,
   INTERPRET_RUNTIME_ERROR
 } InterpretResult;
+
+extern VM vm;
 
 void initVM();
 void freeVM();
