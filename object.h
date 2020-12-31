@@ -30,7 +30,9 @@ struct ObjString {
   char* chars;
 };
 
+ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
+void printObject(Value value);
 
 // body uses `value` 2x - the argument expression is evaluated for each time
 // its used, which isn't ideal if the arg expr has side effects. As a result,
