@@ -29,6 +29,8 @@ struct ObjString {
   // the entire string to find the null terminator
   int length;
   char* chars;
+  // since strings are immutable, we can calculate this upfront & eagerly cache
+  uint32_t hash;
 };
 
 ObjString* takeString(char* chars, int length);

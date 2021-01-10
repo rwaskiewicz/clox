@@ -23,19 +23,36 @@ static Obj* allocateObject(size_t size, ObjType type) {
 /**
  * Helper function to create an ObjString from heap allocated chars
  */
-ObjString* allocateString(char* chars, int length) {
+ObjString* allocateString(char* chars, int length, uint32_t hash) {
   ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
   string->length = length;
   string->chars = chars;
+  string->hash = hash;
 
   return string;
 }
 
 /**
- * Note: This fn takes ownership of the chars
+ * FNV-1a hashing fn - http://www.isthe.com/chongo/tech/comp/fnv/
+ */
+static uint32_t hashString(const char* key, int length) {
+  uint32_t hash = 2166136261u;
+
+  for (int i = 0; i < length; i++) {
+    hash ^= key[i];
+    hash *= 16777619;
+  }
+
+  return hash;
+}
+
+/**
+ * Note: This fn takes ownership of the chars from an existing dynamically
+ * allocated string (e.g. one that is being concatenated)
  */
 ObjString* takeString(char* chars, int length) {
-  return allocateString(chars, length);
+  uint32_t hash = hashString(chars, length);
+  return allocateString(chars, length, hash);
 }
 
 /**
@@ -43,11 +60,13 @@ ObjString* takeString(char* chars, int length) {
  * Note this fn does NOT take ownership of chars
  */
 ObjString* copyString(const char* chars, int length) {
+  uint32_t hash = hashString(chars, length);
+ 
   char* heapChars = ALLOCATE(char, length + 1);
   memcpy(heapChars, chars, length);
   heapChars[length] = '\0';
 
-  return allocateString(heapChars, length);
+  return allocateString(heapChars, length, hash);
 }
 
 void printObject(Value value) {
