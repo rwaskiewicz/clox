@@ -191,9 +191,15 @@ static InterpretResult run() {
         push(NUMBER_VAL(-AS_NUMBER(pop())));
         break;
       }
-      case OP_RETURN: {
+      case OP_PRINT: {
+        // we've already executed the code for the print statement, jsut need
+        // to pop and print it at this point
         printValue(pop());
         printf("\n");
+        break;
+      }
+      case OP_RETURN: {
+        // Exit the interpreter
         return INTERPRET_OK;
       }
     }

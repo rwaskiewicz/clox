@@ -19,6 +19,7 @@ typedef enum {
   OP_DIVIDE,
   OP_NOT,    // "!true"
   OP_NEGATE, // "negate a single operand"
+  OP_PRINT,  // "print"
   OP_RETURN, // "return from the current function"
 } OpCode;
 
