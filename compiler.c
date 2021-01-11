@@ -133,6 +133,10 @@ static void emitReturn() {
   emitByte(OP_RETURN);
 }
 
+/**
+ * Helper method for adding a Value to a chunk's constant table. Returns the
+ * index if it was placed there. May throw if there are too many constants
+ */
 static uint8_t makeConstant(Value value) {
   int constant = addConstant(currentChunk(), value);
   if (constant > UINT8_MAX) {
@@ -171,7 +175,7 @@ static void binary() {
   ParseRule* rule = getRule(operatorType);
   parsePrecedence((Precedence)rule->precedence + 1);
 
-  // Emit the operator instruction. Note the LHS and RHS are on the stack 
+  // Emit the operator instruction. Note the LHS and RHS are on the stack
   // already
   switch (operatorType) {
     case TOKEN_BANG_EQUAL: {
@@ -347,12 +351,57 @@ static void parsePrecedence(Precedence precedence) {
   }
 }
 
+/**
+ * A string is too big to put in the bytecode stream as an operand to an opcode
+ * so instead we'll put it in the chunk's constant table and store the index to
+ * look it up next to the opcode instead
+ *
+ * This function does the actual string allocation and creation of the
+ * ObjString under the hood
+ *
+ * Returns the location (index) in the chunk's constants table
+ */
+static uint8_t identifierConstant(Token* name) {
+  return makeConstant(OBJ_VAL(copyString(name->start, name->length)));
+}
+
+/**
+ * Parse the variable name - returns the location (index) of the constant in
+ * the chunk's constants table
+ */
+static uint8_t parseVariable(const char* errorMessage) {
+  consume(TOKEN_IDENTIFIER, errorMessage);
+  return identifierConstant(&parser.previous);
+}
+
+/**
+ * Emit the bytes related to a variable
+ */
+static void defineVariable(uint8_t global) {
+  emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
 static ParseRule* getRule(TokenType type) {
   return &rules[type];
 }
 
 static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
+}
+
+static void varDeclaration() {
+  // get the variable name
+  uint8_t global = parseVariable("Expect variable name.");
+
+  if (match(TOKEN_EQUAL)) {
+    expression();
+  } else {
+    // implicitly initialize the variable to nil if it wasn't set by the user
+    emitByte(OP_NIL);
+  }
+  consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration");
+
+  defineVariable(global);
 }
 
 static void expressionStatement() {
@@ -400,7 +449,11 @@ static void synchronize() {
 }
 
 static void declaration() {
-  statement();
+  if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    statement();
+  }
 
   if (parser.panicMode) {
     synchronize();

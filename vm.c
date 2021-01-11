@@ -39,10 +39,12 @@ static void runtimeError(const char* format, ...) {
 void initVM() {
   resetStack();
   vm.objects = NULL;
+  initTable(&vm.globals);
   initTable(&vm.strings);
 }
 
 void freeVM() {
+  freeTable(&vm.globals);
   freeTable(&vm.strings);
   freeObjects();
 }
@@ -86,12 +88,22 @@ static void concatenate() {
  * 'computed goto' for more info
  */
 static InterpretResult run() {
-// reads the byte at IP, *then* advances the pointer
-// eq to (*(vm.ip))++
+/**
+ * reads the byte at IP, *then* advances the pointer
+ * eq to (*(vm.ip))++
+ */
 #define READ_BYTE() (*vm.ip++)
 
-// first, read the next byte at the IP, use that value to look up the constant
+/**
+ * first, read the next byte at the IP, use that value to look up the constant
+ */
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+
+/**
+ * read the next byte at the IP, use that value to look up the constant, which
+ * then must be converted to a lox string
+ */
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 
 // Macro for performing binary operations
 #define BINARY_OP(valueType, op) \
@@ -140,6 +152,12 @@ static InterpretResult run() {
         break;
       }
       case OP_POP: {
+        pop();
+        break;
+      }
+      case OP_DEFINE_GLOBAL: {
+        ObjString* name = READ_STRING();
+        tableSet(&vm.globals, name, peek(0));
         pop();
         break;
       }
@@ -211,6 +229,7 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 

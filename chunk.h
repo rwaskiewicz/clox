@@ -11,6 +11,7 @@ typedef enum {
   OP_TRUE,
   OP_FALSE,
   OP_POP,
+  OP_DEFINE_GLOBAL,
   OP_EQUAL,
   OP_GREATER,
   OP_LESS,
@@ -29,7 +30,7 @@ typedef struct {
   int count;
   // the size of the array (potentially)
   int capacity;
-  // dynamically sized array of bytes is needed, since we don't know how big 
+  // dynamically sized array of bytes is needed, since we don't know how big
   // this will be at compile time (note this is still jsut a pointer).
   uint8_t* code;
   // line number error info, mirrors that byte in the bytecode by array index - so we don't need a separate count/capactiy

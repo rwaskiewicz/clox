@@ -18,6 +18,8 @@ typedef struct {
   // the stack (the last full item is technically at stackTop-1). IE stackTop
   // points to where the next item will go
   Value* stackTop;
+  // Storage for global variables
+  Table globals;
   // Table of interned strings
   Table strings;
   // Head of our intrusive list for basic memory leak prevention
