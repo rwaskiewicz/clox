@@ -7,7 +7,7 @@
 #include "value.h"
 
 /**
- * this varies based on the hash fn, collision handling strategy, and keysets 
+ * this varies based on the hash fn, collision handling strategy, and keysets
  * - semi-arbitrarily picked for Lox
  */
 #define TABLE_MAX_LOAD 0.75
@@ -34,7 +34,7 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
   // we won't loop forever thanks to the load factor
   for (;;) {
     Entry* entry = &entries[index];
-   
+
     if (entry->key == NULL) {
       if (IS_NIL(entry->value)) {
         // Case: the key isn't in the table (NULL), the bucket is empty OR
@@ -42,14 +42,15 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
         return tombstone != NULL ? tombstone : entry;
       } else {
         // Case: We found a tombstone
-        if (tombstone  == NULL) {
+        if (tombstone == NULL) {
           tombstone = entry;
         }
       }
     } else if (entry->key == key) {
        // Case: the key is already in the table, we're going to overwrite it
+       return entry;
     }
-    
+
     // Case: We have a collision, start linear probing
     index = (index + 1) % capacity;
   }
@@ -164,13 +165,12 @@ ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t
       if (IS_NIL(entry->value)) {
         return NULL;
       }
-    } else if (entry->key->length == length && 
-        entry->key->hash == hash && 
+    } else if (entry->key->length == length &&
+        entry->key->hash == hash &&
         memcmp(entry->key->chars, chars, length) == 0) {
       // found it!
       return entry->key;
     }
-
     index = (index + 1) % table->capacity;
   }
 }

@@ -225,7 +225,7 @@ static InterpretResult run() {
         break;
       }
       case OP_PRINT: {
-        // we've already executed the code for the print statement, jsut need
+        // we've already executed the code for the print statement, just need
         // to pop and print it at this point
         printValue(pop());
         printf("\n");
