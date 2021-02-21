@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -191,6 +192,15 @@ static void beginScope() {
 
 static void endScope() {
   current->scopeDepth--;
+
+  // remove locals that occur in a scope that we just left
+  while (current->localCount > 0 &&
+         current->locals[current->localCount - 1].depth > current->scopeDepth) {
+           // remove the variable from the stack
+           emitByte(OP_POP);
+           // decrement our pointer
+           current->localCount--;
+         }
 }
 
 static void expression();
@@ -214,11 +224,77 @@ static uint8_t identifierConstant(Token* name) {
 }
 
 /**
+ * Determine if two identifiers are the same
+ */
+static bool identifiersEqual(Token* a, Token* b) {
+  if (a->length != b->length) {
+    return false;
+  }
+  // tokens aren't Lox strings (yet), so we don't have their hashes and need to memcmp
+  return memcmp(a->start, b->start, a->length) == 0;
+}
+
+/**
+ * Store a local variable
+ */
+static void addLocal(Token name) {
+  // because the index to the Locals array in the compiler is indexed by a
+  // single byte, we have a limitation of 256 local variables per scope
+  if (current->localCount == UINT8_COUNT) {
+    error("Too many local variables in function.");
+    return;
+  }
+
+  Local* local = &current->locals[current->localCount++];
+  local->name = name;
+  local->depth = current->scopeDepth;
+}
+
+/**
+ * For local variables, record their existence
+ */
+static void declareVariable() {
+  if (current->scopeDepth == 0) {
+    return;
+  }
+
+  Token* name = &parser.previous;
+  /**
+   *  Check to ensure that two variables don't have the same name in the same scope:
+   *  {
+   *    var a = 1;
+   *    var a = 2; // illegal
+   *  }
+   *  Note shadowing is allowed: { var a = 1; { var a = 2; } }
+   */
+  for (int i = current->localCount - 1; i >= 0; i--) {
+    Local* local = &current->locals[i];
+    if (local->depth != -1 && local->depth < current->scopeDepth) {
+      break;
+    }
+
+    if (identifiersEqual(name, &local->name)) {
+      error("Already variable with this name in this scope");
+    }
+  }
+
+  addLocal(*name);
+}
+
+/**
  * Parse the variable name - returns the location (index) of the constant in
  * the chunk's constants table
  */
 static uint8_t parseVariable(const char* errorMessage) {
   consume(TOKEN_IDENTIFIER, errorMessage);
+
+  declareVariable();
+  // at runtime, locals aren't resolved by name, no need to add it to the constant's table
+  if (current->scopeDepth > 0) {
+    // return a dummy index
+    return 0;
+  }
+
   return identifierConstant(&parser.previous);
 }
 
@@ -433,6 +509,11 @@ static void parsePrecedence(Precedence precedence) {
  * Emit the bytes related to a variable
  */
 static void defineVariable(uint8_t global) {
+  // don't emit if we're not in global scope
+  if (current->scopeDepth > 0) {
+    return;
+  }
+
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
@@ -453,10 +534,11 @@ static void block() {
 }
 
 static void varDeclaration() {
-  // get the variable name
+  // get the variable name, returning the index to the identifier in chunk's constants table
   uint8_t global = parseVariable("Expect variable name.");
 
   if (match(TOKEN_EQUAL)) {
+    // 22.3 has a really good image for this and how efficient temporaries are at becoming a local variable
     expression();
   } else {
     // implicitly initialize the variable to nil if it wasn't set by the user
@@ -464,6 +546,7 @@ static void varDeclaration() {
   }
   consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration");
 
+  // emit that we have a global variable at some index in the table
   defineVariable(global);
 }
 
