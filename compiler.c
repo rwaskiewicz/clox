@@ -38,7 +38,26 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
+typedef struct {
+  // the name of the variable
+  Token name;
+  // the scope depth of the block where the local is declared
+  int depth;
+} Local;
+
+typedef struct {
+  // flat array of all locals in scope, ordered in the array in the order they appear in the code
+  // hard limit on the number of locals tied to the the fact that instruction operand is one byte
+  Local locals[UINT8_COUNT];
+  // how many locals are in scope - i.e. how many slots in `locals` are in used at a time
+  int localCount;
+  // the number of blocks deep we are at a given time. zero is the global scope.
+  int scopeDepth;
+} Compiler;
+
 Parser parser;
+
+Compiler* current = NULL;
 
 Chunk *compilingChunk;
 
@@ -149,6 +168,12 @@ static uint8_t makeConstant(Value value) {
 
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+static void initCompiler(Compiler* compiler) {
+  compiler->localCount = 0;
+  compiler->scopeDepth = 0;
+  current = compiler;
 }
 
 static void endCompiler() {
@@ -492,6 +517,8 @@ static void statement() {
 
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
+  Compiler compiler;
+  initCompiler(&compiler);
   compilingChunk = chunk;
 
   parser.hadError = false;
