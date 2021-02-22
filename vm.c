@@ -155,6 +155,20 @@ static InterpretResult run() {
         pop();
         break;
       }
+      case OP_GET_LOCAL: {
+        // take single byte when the local lives and push it on the stack
+        uint8_t slot = READ_BYTE();
+        push(vm.stack[slot]);
+        break;
+      }
+      case OP_SET_LOCAL: {
+        // take single byte when the local lives
+        uint8_t slot = READ_BYTE();
+        // assignment is just an expression, which should produce a value.
+        // that value is the assigned value itself.
+        vm.stack[slot] = peek(0);
+        break;
+      }
       case OP_GET_GLOBAL: {
         ObjString* name = READ_STRING();
         Value value;
