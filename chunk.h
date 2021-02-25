@@ -23,10 +23,12 @@ typedef enum {
   OP_SUBTRACT,
   OP_MULTIPLY,
   OP_DIVIDE,
-  OP_NOT,    // "!true"
-  OP_NEGATE, // "negate a single operand"
-  OP_PRINT,  // "print"
-  OP_RETURN, // "return from the current function"
+  OP_NOT,           // "!true"
+  OP_NEGATE,        // "negate a single operand"
+  OP_PRINT,         // "print"
+  OP_JUMP,          // "unconditoinal jump"
+  OP_JUMP_IF_FALSE, // "jump for falsy if statements"
+  OP_RETURN,        // "return from the current function"
 } OpCode;
 
 typedef struct {

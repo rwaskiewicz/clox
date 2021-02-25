@@ -100,6 +100,11 @@ static InterpretResult run() {
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 
 /**
+ * Grab the next two bytes fro mthe chunk and create an unsigned 16 bit int
+ */
+#define READ_SHORT() (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
+
+/**
  * read the next byte at the IP, use that value to look up the constant, which
  * then must be converted to a lox string
  */
@@ -255,6 +260,19 @@ static InterpretResult run() {
         printf("\n");
         break;
       }
+      case OP_JUMP: {
+        uint16_t offset = READ_SHORT();
+        vm.ip += offset;
+        break;
+      }
+      case OP_JUMP_IF_FALSE: {
+        uint16_t offset = READ_SHORT();
+        // if the condition from the if statement is falsy, jump
+        if (isFalsey(peek(0))) {
+          vm.ip += offset;
+        }
+        break;
+      }
       case OP_RETURN: {
         // Exit the interpreter
         return INTERPRET_OK;
@@ -263,6 +281,7 @@ static InterpretResult run() {
   }
 
 #undef READ_BYTE
+#undef READ_SHORT
 #undef READ_CONSTANT
 #undef READ_STRING
 #undef BINARY_OP
