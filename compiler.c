@@ -439,6 +439,18 @@ static void number(bool canAssign) {
   emitConstant(NUMBER_VAL(value));
 }
 
+static void or_(bool canAssign) {
+  // if the LHS is falsey, do a tiny lil jump to the next statement
+  int elseJump = emitJump(OP_JUMP_IF_FALSE);
+  int endJump = emitJump(OP_JUMP);
+
+  patchJump(elseJump);
+  emitByte(OP_POP);
+
+  parsePrecedence(PREC_OR);
+  patchJump(endJump);
+}
+
 static void string(bool canAssign) {
   // Note: we need to trim the leading and trailing quotation marks, hence the
   // arithmetic in determining how much of the string to copy
@@ -525,7 +537,7 @@ ParseRule rules[] = {
   [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE},
   [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
-  [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
   [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
@@ -533,7 +545,7 @@ ParseRule rules[] = {
   [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
   [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
-  [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_OR]            = {NULL,     or_,    PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
@@ -583,6 +595,23 @@ static void defineVariable(uint8_t global) {
   }
 
   emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
+/**
+ * the LHS of the expression has been compiled, so its value is on the top of
+ * the stack.
+ */
+static void and_(bool canAssign) {
+  // if the RHS is false, well we know the and expression is falsey
+  int endJump = emitJump(OP_JUMP_IF_FALSE);
+
+  // discard the LHS, since we'll evaluate the RHS, which will become the LHS
+  emitByte(OP_POP);
+  parsePrecedence(PREC_AND);
+
+  // if we jumped, the value is still at the top of the stack to be the result
+  // of the entire expr (we never popped)
+  patchJump(endJump);
 }
 
 static ParseRule* getRule(TokenType type) {
