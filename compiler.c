@@ -347,6 +347,40 @@ static void markInitialized() {
   current->locals[current->localCount-1].depth = current->scopeDepth;
 }
 
+/**
+ * Emit the bytes related to a variable
+ */
+static void defineVariable(uint8_t global) {
+  // don't emit if we're not in global scope
+  if (current->scopeDepth > 0) {
+    // Initialize the variable after declaring it
+    // - declaring is making it available in the scope
+    // - defining it (here) is giving it a value
+    markInitialized();
+    return;
+  }
+
+  emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
+
+/**
+ * the LHS of the expression has been compiled, so its value is on the top of
+ * the stack.
+ */
+static void and_(bool canAssign) {
+  // if the RHS is false, well we know the and expression is falsey
+  int endJump = emitJump(OP_JUMP_IF_FALSE);
+
+  // discard the LHS, since we'll evaluate the RHS, which will become the LHS
+  emitByte(OP_POP);
+  parsePrecedence(PREC_AND);
+
+  // if we jumped, the value is still at the top of the stack to be the result
+  // of the entire expr (we never popped)
+  patchJump(endJump);
+}
+
 static void binary(bool canAssign) {
   // Remember the operator. It's already been consumed (and the LHS has been
   // compiled already too)
@@ -579,39 +613,6 @@ static void parsePrecedence(Precedence precedence) {
   if (canAssign && match(TOKEN_EQUAL)) {
     error("Invalid assignment target.");
   }
-}
-
-/**
- * Emit the bytes related to a variable
- */
-static void defineVariable(uint8_t global) {
-  // don't emit if we're not in global scope
-  if (current->scopeDepth > 0) {
-    // Initialize the variable after declaring it
-    // - declaring is making it available in the scope
-    // - defining it (here) is giving it a value
-    markInitialized();
-    return;
-  }
-
-  emitBytes(OP_DEFINE_GLOBAL, global);
-}
-
-/**
- * the LHS of the expression has been compiled, so its value is on the top of
- * the stack.
- */
-static void and_(bool canAssign) {
-  // if the RHS is false, well we know the and expression is falsey
-  int endJump = emitJump(OP_JUMP_IF_FALSE);
-
-  // discard the LHS, since we'll evaluate the RHS, which will become the LHS
-  emitByte(OP_POP);
-  parsePrecedence(PREC_AND);
-
-  // if we jumped, the value is still at the top of the stack to be the result
-  // of the entire expr (we never popped)
-  patchJump(endJump);
 }
 
 static ParseRule* getRule(TokenType type) {
