@@ -667,6 +667,62 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 
+static void forStatement() {
+  // in the event we declare a variable in the initializer...
+  beginScope();
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+  if (match(TOKEN_SEMICOLON)) {
+    // No initializer. This is fine, move along...
+  } else if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    // has a happy little side effect of finding a semicolon and performing a
+    // POP so we don't have the initialzer leaving anything on the stack
+    expressionStatement();
+  }
+
+  int loopStart = currentChunk()->count;
+
+  int exitJump = -1;
+  if (!match(TOKEN_SEMICOLON)) {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+    // jump out of the loop if the condition is false
+    exitJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP); // condition needs to be popped
+  }
+
+  if (!match(TOKEN_RIGHT_PAREN)) {
+    // jump to go _to_ the body, over the increment clause
+    int bodyJump = emitJump(OP_JUMP);
+
+    int incrementStart = currentChunk()->count;
+    expression();
+    emitByte(OP_POP);
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after 'for' clauses.");
+
+    // right before the condition expression
+    // this happens right after an increment, since an increment happens at the
+    // end of a loop (a little weird, I know)
+    emitLoop(loopStart);
+    loopStart = incrementStart;
+    patchJump(bodyJump);
+  }
+
+  statement();
+
+  emitLoop(loopStart);
+
+  if (exitJump != -1) {
+    patchJump(exitJump);
+    emitByte(OP_POP); // condition needs to be popped
+  }
+
+  endScope();
+}
+
 /**
  * parse an if statement
  */
@@ -768,6 +824,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_FOR)) {
+    forStatement();
   } else if (match(TOKEN_IF)) {
     ifStatement();
   } else if (match(TOKEN_WHILE)) {
