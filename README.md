@@ -2,6 +2,11 @@
 
 My implmentation of Crafting Interpreter's lox language in C (Pt 3 of the book)
 
+## Compiling
+```
+gcc -o clox main.c chunk.c compiler.c debug.c memory.c object.c scanner.c table.c value.c vm.c
+```
+
 ## Testing
 
 To run tests against the test suite defined in the CI repo:
