@@ -279,7 +279,7 @@ static int resolveLocal(Compiler* compiler, Token* name) {
     Local* local = &compiler->locals[i];
     if (identifiersEqual(name, &local->name)) {
       if (local->depth == -1) {
-        error("Can't read local variable in its own initializer");
+        error("Can't read local variable in its own initializer.");
       }
       return i;
     }
@@ -329,7 +329,7 @@ static void declareVariable() {
     }
 
     if (identifiersEqual(name, &local->name)) {
-      error("Already variable with this name in this scope");
+      error("Already variable with this name in this scope.");
     }
   }
 
@@ -615,7 +615,7 @@ static void parsePrecedence(Precedence precedence) {
   bool canAssign = precedence <= PREC_ASSIGNMENT;
   prefixRule(canAssign);
 
-  while (precedence < getRule(parser.current.type)->precedence) {
+  while (precedence <= getRule(parser.current.type)->precedence) {
     advance();
     ParseFn infixRule = getRule(parser.previous.type)->infix;
     infixRule(canAssign);
