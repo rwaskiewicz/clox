@@ -21,6 +21,18 @@ static Obj* allocateObject(size_t size, ObjType type) {
   return object;
 }
 
+/*
+ * Helper function to allocate, well, a new function...
+ */
+ObjFunction* newFunction() {
+  ObjFunction* function = ALLOCATE_OBJ(ObjFunction, OBJ_FUNCTION);
+
+  function->arity = 0;
+  function->name = NULL;
+  initChunk(&function->chunk);
+  return function;
+}
+
 /**
  * Helper function to create an ObjString fu_int32_trom heap allocated chars
  */
@@ -79,7 +91,7 @@ ObjString* copyString(const char* chars, int length) {
   if (interned != NULL) {
     return interned;
   }
- 
+
   char* heapChars = ALLOCATE(char, length + 1);
   memcpy(heapChars, chars, length);
   heapChars[length] = '\0';
@@ -87,8 +99,18 @@ ObjString* copyString(const char* chars, int length) {
   return allocateString(heapChars, length, hash);
 }
 
+/*
+ * Prints the name of a function
+ */
+static void printFunction(ObjFunction* function) {
+  printf("<fn %s>", function->name->chars);
+}
+
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
+    case OBJ_FUNCTION:
+      printFunction(AS_FUNCTION(value));
+      break;
     case OBJ_STRING:
       printf("%s", AS_CSTRING(value));
       break;
