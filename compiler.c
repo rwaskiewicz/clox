@@ -46,7 +46,20 @@ typedef struct {
   int depth;
 } Local;
 
+/*
+ * Enum to designate whether we're compiling top-level code vs a function body
+ */
+typedef enum {
+  TYPE_FUNCTION,
+  TYPE_SCRIPT,
+} FunctionType;
+
 typedef struct {
+  // reference to the function object being built
+  ObjFunction* function;
+  // the type of the function object being built
+  FunctionType type;
+
   // flat array of all locals in scope, ordered in the array in the order they appear in the code
   // hard limit on the number of locals tied to the the fact that instruction operand is one byte
   Local locals[UINT8_COUNT];
@@ -66,7 +79,7 @@ Chunk *compilingChunk;
  * Return the chunk we're writing
  */
 static Chunk* currentChunk() {
-  return compilingChunk;
+  return &current->function->chunk;
 }
 
 static void errorAt(Token* token, const char* message) {
@@ -208,19 +221,36 @@ static void patchJump(int offset) {
   currentChunk()->code[offset + 1] = jump & 0xff;
 }
 
-static void initCompiler(Compiler* compiler) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
+  compiler->function = NULL;
+  compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  // this is 'gc related paranoia` per 24.2.1 (we set this to NULL a few lines before)
+  compiler->function = newFunction();
   current = compiler;
+
+  /*
+   * The compiler's locals array keeps track of slots used for temporaries
+   * (r-values), and local variables. Implicitly allocate slot 0 for the VM's
+   * own use, and give it an empty name so it can't be overwritten
+   */
+  Local* local = &current->locals[current->localCount++];
+  local->depth = 0;
+  local->name.start = "";
+  local->name.length = 0;
 }
 
-static void endCompiler() {
+static ObjFunction* endCompiler() {
   emitReturn();
+  ObjFunction* function = current->function;
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-    disassembleChunk(currentChunk(), "code");
+    disassembleChunk(currentChunk(), function->name != NULL ? function->name->chars : "<script>");
   }
 #endif
+
+  return function;
 }
 
 static void beginScope() {
@@ -839,11 +869,10 @@ static void statement() {
   }
 }
 
-bool compile(const char* source, Chunk* chunk) {
+ObjFunction* compile(const char* source) {
   initScanner(source);
   Compiler compiler;
-  initCompiler(&compiler);
-  compilingChunk = chunk;
+  initCompiler(&compiler, TYPE_SCRIPT);
 
   parser.hadError = false;
   parser.panicMode = false;
@@ -855,6 +884,6 @@ bool compile(const char* source, Chunk* chunk) {
     declaration();
   }
 
-  endCompiler();
-  return !parser.hadError;
+  ObjFunction* function = endCompiler();
+  return parser.hadError ? NULL : function;
 }
