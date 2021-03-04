@@ -54,7 +54,10 @@ typedef enum {
   TYPE_SCRIPT,
 } FunctionType;
 
-typedef struct {
+// need to name the struct since we can't reference the typedef in the struct
+typedef struct Compiler {
+  // Pointer back to the previous compiler, all the way back to the global one
+  struct Compiler* enclosing;
   // reference to the function object being built
   ObjFunction* function;
   // the type of the function object being built
@@ -222,6 +225,7 @@ static void patchJump(int offset) {
 }
 
 static void initCompiler(Compiler* compiler, FunctionType type) {
+  compiler->enclosing = current;
   compiler->function = NULL;
   compiler->type = type;
   compiler->localCount = 0;
@@ -229,6 +233,12 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   // this is 'gc related paranoia` per 24.2.1 (we set this to NULL a few lines before)
   compiler->function = newFunction();
   current = compiler;
+
+  if (type != TYPE_SCRIPT) {
+    // we just parsed the functions name, so let's grab it
+    current->function->name = copyString(parser.previous.start,
+                                         parser.previous.length);
+  }
 
   /*
    * The compiler's locals array keeps track of slots used for temporaries
@@ -250,6 +260,9 @@ static ObjFunction* endCompiler() {
   }
 #endif
 
+  // this means we're limited in nature to the number of how nested functions
+  // can be. Go too far and you cna overflow the stack.
+  current = current->enclosing;
   return function;
 }
 
@@ -387,6 +400,9 @@ static uint8_t parseVariable(const char* errorMessage) {
  * Initialize a variable in the scope
  */
 static void markInitialized() {
+  if (current->scopeDepth == 0) {
+    return;
+  }
   current->locals[current->localCount-1].depth = current->scopeDepth;
 }
 
@@ -674,6 +690,51 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+static void function(FunctionType type) {
+  Compiler compiler;
+  // create a new compiler for each function object
+  initCompiler(&compiler, type);
+  beginScope();
+
+  // Compile the parameter list
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      current->function->arity++;
+      if (current->function->arity > 255) {
+        errorAtCurrent("Can't have more than 255 parameters.");
+      }
+
+      uint8_t paramConstant = parseVariable("Expect parameter name.");
+      defineVariable(paramConstant);
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+
+  // The body
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+  block();
+
+  // Create the function object
+  ObjFunction* function = endCompiler();
+  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+}
+
+/*
+ * Function declarations differ from variables in that it is safe for a
+ * function to refer to its own name in its own body, since you can't call it
+ * until after its defined - and we need to allow that for a little thing
+ * called recursion
+ */
+static void funDeclaration() {
+  // note: a fn declaration at the top level will bind the fn to a global var
+  // otherwise, we have a regular ol' local var
+  uint8_t global = parseVariable("Expect function name.");
+  markInitialized();
+  function(TYPE_FUNCTION);
+  defineVariable(global);
+}
+
 static void varDeclaration() {
   // get the variable name, returning the index to the identifier in chunk's constants table
   uint8_t global = parseVariable("Expect variable name.");
@@ -840,7 +901,9 @@ static void synchronize() {
 }
 
 static void declaration() {
-  if (match(TOKEN_VAR)) {
+  if (match(TOKEN_FUN)) {
+    funDeclaration();
+  } else if (match(TOKEN_VAR)) {
     varDeclaration();
   } else {
     statement();
