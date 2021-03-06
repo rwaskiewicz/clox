@@ -22,6 +22,15 @@ static Obj* allocateObject(size_t size, ObjType type) {
 }
 
 /*
+ * Helper function to allocate a new closure
+ */
+ObjClosure* newClosure(ObjFunction* function) {
+  ObjClosure* closure = ALLOCATE_OBJ(ObjClosure, OBJ_CLOSURE);
+  closure->function = function;
+  return closure;
+}
+
+/*
  * Helper function to allocate, well, a new function...
  */
 ObjFunction* newFunction() {
@@ -121,6 +130,8 @@ static void printFunction(ObjFunction* function) {
 
 void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
+    case OBJ_CLOSURE:
+      printFunction(AS_CLOSURE(value)->function);
     case OBJ_FUNCTION:
       printFunction(AS_FUNCTION(value));
       break;
