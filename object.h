@@ -9,11 +9,14 @@
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
 // Helpers for determining whether or not a Lox object is of a particular type
-#define IS_FUNCTION(value) isObjType(vale, OBJ_FUNCTION)
+#define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
+#define IS_NATIVE(value)   isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)   isObjType(value, OBJ_STRING)
 
 // gets the object as an ObjFunction
 #define AS_FUNCTION(value) ((ObjFunction*)AS_OBJ(value))
+// gets the object as a native fn
+#define AS_NATIVE(value) (((ObjNative*)AS_OBJ(value))->function)
 // gets the obj from the Value struct
 #define AS_STRING(value)   ((ObjString*)AS_OBJ(value))
 // gets the obj from the Value struct, then looks at `Obj#chars`
@@ -24,6 +27,7 @@
  */
 typedef enum {
   OBJ_FUNCTION,
+  OBJ_NATIVE,
   OBJ_STRING,
 } ObjType;
 
@@ -46,6 +50,13 @@ typedef struct {
   ObjString* name;
 } ObjFunction;
 
+typedef Value (*NativeFn)(int argCount, Value* args);
+
+typedef struct {
+  Obj obj;
+  NativeFn function;
+} ObjNative;
+
 struct ObjString {
   Obj obj;
   // allows us to know how much memory we've allocated without having to walk
@@ -57,6 +68,7 @@ struct ObjString {
 };
 
 ObjFunction* newFunction();
+ObjNative* newNative();
 ObjString* takeString(char* chars, int length);
 ObjString* copyString(const char* chars, int length);
 void printObject(Value value);

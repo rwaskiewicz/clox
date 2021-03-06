@@ -33,6 +33,15 @@ ObjFunction* newFunction() {
   return function;
 }
 
+/*
+ * Helper function to allocate a new native fn
+ */
+ObjNative* newNative(NativeFn function) {
+  ObjNative* native = ALLOCATE_OBJ(ObjNative, OBJ_NATIVE);
+  native->function = function;
+  return native;
+}
+
 /**
  * Helper function to create an ObjString fu_int32_trom heap allocated chars
  */
@@ -114,6 +123,9 @@ void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
     case OBJ_FUNCTION:
       printFunction(AS_FUNCTION(value));
+      break;
+    case OBJ_NATIVE:
+      printf("<native fn>");
       break;
     case OBJ_STRING:
       printf("%s", AS_CSTRING(value));
