@@ -13,8 +13,8 @@
  * represents a single ongoing fn call.
  */
 typedef struct {
-  // pointer to the fn being called
-  ObjFunction* function;
+  // pointer to the closure of the fn being called
+  ObjClosure* closure;
   // ip of the caller to jump back to
   uint8_t* ip;
   // points to the VM's value stack at the first position the fn can use
