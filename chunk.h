@@ -30,6 +30,7 @@ typedef enum {
   OP_JUMP_IF_FALSE, // "jump for falsy if statements"
   OP_LOOP,          // "while, for loops"
   OP_CALL,          // "invoke a fn"
+  OP_CLOSURE,       // "invoke a closure"
   OP_RETURN,        // "return from the current function"
 } OpCode;
 
