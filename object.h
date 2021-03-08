@@ -48,6 +48,8 @@ typedef struct {
   Obj obj;
   // the number of parameters that the function expects
   int arity;
+  // the number of upvalues stored for the function
+  int upvalueCount;
   // chunk associated with the function
   Chunk chunk;
   // the name of the function
