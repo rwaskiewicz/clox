@@ -19,6 +19,9 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 static void freeObject(Obj* object) {
   switch (object->type) {
     case OBJ_CLOSURE: {
+      ObjClosure* closure = (ObjClosure*)object;
+      // free the array we own, just not the entities (we don't own those)
+      FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
       // free the closure itself, but not the associated ObjFunction,
       // because the closure does not _own_ the function (many to one
       // relationship)
@@ -39,6 +42,11 @@ static void freeObject(Obj* object) {
       ObjString* string = (ObjString*)object;
       FREE_ARRAY(char, string->chars, string->length + 1);
       FREE(ObjString, object);
+      break;
+    }
+    case OBJ_UPVALUE: {
+      // Upvalues don't own their references, so just free the upvalue
+      FREE(OBJ_UPVALUE, object);
       break;
     }
   }
