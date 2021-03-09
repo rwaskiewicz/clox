@@ -34,6 +34,8 @@ typedef struct {
   Table globals;
   // Table of interned strings
   Table strings;
+  // HEAD pointer to the list of open upvalues
+  ObjUpvalue* openUpvalues;
   // Head of our intrusive list for basic memory leak prevention
   Obj* objects;
 } VM;

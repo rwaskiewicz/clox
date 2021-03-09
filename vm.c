@@ -26,6 +26,8 @@ static void resetStack() {
   vm.stackTop = vm.stack;
   // on startup, the call frame stack is empty
   vm.frameCount = 0;
+  // the list of open upvalues starts out empty
+  vm.openUpvalues = NULL;
 }
 
 static void runtimeError(const char* format, ...) {
@@ -134,8 +136,41 @@ static bool callValue(Value callee, int argCount) {
 }
 
 static ObjUpvalue* captureUpvalue(Value* local) {
+  ObjUpvalue* prevUpvalue = NULL;
+  ObjUpvalue* upvalue = vm.openUpvalues;
+
+  // start at the head of the list, which is the upvalue closest to the top of the stack
+  while (upvalue != NULL && upvalue->location > local) {
+    prevUpvalue = upvalue;
+    upvalue = upvalue->next;
+  }
+
+  // if we found the slot that we're looking for, return the upvalue
+  if (upvalue != NULL && upvalue->location == local) {
+    return upvalue;
+  }
+
   ObjUpvalue* createdUpvalue = newUpvalue(local);
+  createdUpvalue->next = upvalue;
+
+  if (prevUpvalue == NULL) {
+    // we ran out of values to search (or the list was empty)
+    vm.openUpvalues = createdUpvalue;
+  } else {
+    // we found an upvalue whose local slot is below the one we're looking for
+    prevUpvalue->next = createdUpvalue;
+  }
+
   return createdUpvalue;
+}
+
+static void closeUpvalues(Value* last) {
+  while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+    ObjUpvalue* upvalue = vm.openUpvalues;
+    upvalue->closed = *upvalue->location;
+    upvalue->location = &upvalue->closed;
+    vm.openUpvalues = upvalue->next;
+  }
 }
 
 static bool isFalsey(Value value) {
@@ -398,8 +433,17 @@ static InterpretResult run() {
         }
         break;
       }
+      case OP_CLOSE_UPVALUE: {
+        // move to the heap
+        closeUpvalues(vm.stackTop - 1);
+        // pop of the stack
+        pop();
+        break;
+      }
       case OP_RETURN: {
         Value result = pop();
+
+        closeUpvalues(frame->slots);
 
         // get rid of the entire call frame
         vm.frameCount--;

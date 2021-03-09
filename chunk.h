@@ -33,6 +33,7 @@ typedef enum {
   OP_LOOP,          // "while, for loops"
   OP_CALL,          // "invoke a fn"
   OP_CLOSURE,       // "invoke a closure"
+  OP_CLOSE_UPVALUE, // "move a variable from the stack to the heap"
   OP_RETURN,        // "return from the current function"
 } OpCode;
 

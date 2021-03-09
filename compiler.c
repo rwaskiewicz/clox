@@ -44,6 +44,8 @@ typedef struct {
   Token name;
   // the scope depth of the block where the local is declared
   int depth;
+  // true if the local is captured by any later nested function declaration
+  bool isCaptured;
 } Local;
 
 /*
@@ -258,6 +260,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
    */
   Local* local = &current->locals[current->localCount++];
   local->depth = 0;
+  local->isCaptured = false;
   local->name.start = "";
   local->name.length = 0;
 }
@@ -287,8 +290,14 @@ static void endScope() {
   // remove locals that occur in a scope that we just left
   while (current->localCount > 0 &&
          current->locals[current->localCount - 1].depth > current->scopeDepth) {
-           // remove the variable from the stack
-           emitByte(OP_POP);
+           if (current->locals[current->localCount - 1].isCaptured) {
+             // remove the variable from the stack, and hoist it to the heap
+             // the variable is right at the top of the stack, so no arg needed
+             emitByte(OP_CLOSE_UPVALUE);
+           } else {
+             // remove the variable from the stack
+             emitByte(OP_POP);
+           }
            // decrement our pointer
            current->localCount--;
          }
@@ -375,6 +384,7 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
     // base case - we look for a matching local variable in the enclosing fn
     int local = resolveLocal(compiler->enclosing, name);
     if (local != -1) {
+      compiler->enclosing->locals[local].isCaptured = true;
       // return the _upvalue_ index
       return addUpvalue(compiler, (uint8_t)local, true);
     }
@@ -405,6 +415,8 @@ static void addLocal(Token name) {
   // use -1 as a sentinel value for marking the var as 'unintialized' to handle
   // cases like var a = a;
   local->depth = -1;
+  // all locals start off not captured
+  local->isCaptured = false;
 }
 
 /**

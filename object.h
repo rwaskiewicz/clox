@@ -78,6 +78,9 @@ typedef struct ObjUpvalue {
   Obj obj;
   // pointer to the closed over variable, not a value
   Value *location;
+  Value closed;
+  // pointer to the next open Upvalue
+  struct ObjUpvalue* next;
 } ObjUpvalue;
 
 typedef struct {

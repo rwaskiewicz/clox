@@ -127,7 +127,9 @@ ObjString* copyString(const char* chars, int length) {
 
 ObjUpvalue* newUpvalue(Value* slot) {
   ObjUpvalue* upvalue = ALLOCATE_OBJ(ObjUpvalue, OBJ_UPVALUE);
+  upvalue->closed = NIL_VALUE;
   upvalue->location = slot;
+  upvalue->next = NULL;
   return upvalue;
 }
 
@@ -146,6 +148,7 @@ void printObject(Value value) {
   switch (OBJ_TYPE(value)) {
     case OBJ_CLOSURE:
       printFunction(AS_CLOSURE(value)->function);
+      break;
     case OBJ_FUNCTION:
       printFunction(AS_FUNCTION(value));
       break;
