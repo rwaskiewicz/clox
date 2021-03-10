@@ -12,6 +12,11 @@
 #define DEBUG_TRACE_EXECUTION
 #undef DEBUG_TRACE_EXECUTION
 
+// Flag for debugging garbage collection via forcing GC
+#define DEBUG_STRESS_GC
+// Flag for debugging garbage collection via logging
+#define DEBUG_LOG_GC
+
 #define UINT8_COUNT (UINT8_MAX + 1)
 
 #endif
