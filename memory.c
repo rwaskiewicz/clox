@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "compiler.h"
 #include "memory.h"
 #include "vm.h"
 
@@ -26,6 +27,27 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     exit(1);
   }
   return result;
+}
+
+void markObject(Obj* object) {
+  if (object == NULL) {
+    return;
+  }
+#ifdef DEBUG_LOG_GC
+  printf("%p mark ", (void*)object);
+  printValue(OBJ_VAL(object));
+  printf("\n");
+#endif
+
+  object->isMarked = true;
+}
+
+void markValue(Value value) {
+  if (!IS_OBJ(value)) {
+    // only garbage collect things that are on the heap
+    return;
+  }
+  markObject(AS_OBJ(value));
 }
 
 static void freeObject(Obj* object) {
@@ -68,10 +90,34 @@ static void freeObject(Obj* object) {
   }
 }
 
+static void markRoots() {
+  // most roots are locals or temporaries sitting on the stack, walk it
+  for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+    markValue(*slot);
+  }
+
+  // the vm maintains a stack of CallFrames, each containing a pointer to a
+  // closure being called that needs to be held on to
+  for (int i = 0; i < vm.frameCount; i++) {
+    markObject((Obj*)vm.frames[i].closure);
+  }
+
+  // open upvalues need to be preserved
+  for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
+    markObject((Obj*)upvalue);
+  }
+
+  // mark the globals
+  markTable(&vm.globals);
+  markCompilerRoots();
+}
+
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
 #endif
+
+  markRoots();
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
