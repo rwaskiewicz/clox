@@ -38,6 +38,10 @@ typedef struct {
   ObjUpvalue* openUpvalues;
   // Head of our intrusive list for basic memory leak prevention
   Obj* objects;
+  // running total of the number of bytes of managed memory the VM has allocated
+  size_t bytesAllocated;
+  // the threshold that triggers the next collection
+  size_t nextGC;
   // the number of objects we have colored gray
   int grayCount;
   // the number of objects we can hold that we've colored gray
