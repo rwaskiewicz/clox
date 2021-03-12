@@ -38,6 +38,12 @@ typedef struct {
   ObjUpvalue* openUpvalues;
   // Head of our intrusive list for basic memory leak prevention
   Obj* objects;
+  // the number of objects we have colored gray
+  int grayCount;
+  // the number of objects we can hold that we've colored gray
+  int grayCapacity;
+  // the objects we've colored gray
+  Obj** grayStack;
 } VM;
 
 typedef enum {
