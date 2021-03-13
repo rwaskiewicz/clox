@@ -96,6 +96,11 @@ static void blackenObject(Obj* object) {
 #endif
 
   switch (object->type) {
+    case OBJ_CLASS: {
+      ObjClass* klass = (ObjClass*)object;
+      markObject((Obj*)klass->name);
+      break;
+    }
     case OBJ_CLOSURE: {
       ObjClosure* closure = (ObjClosure*)object;
       markObject((Obj*)closure->function);
@@ -128,6 +133,10 @@ static void freeObject(Obj* object) {
 #endif
 
   switch (object->type) {
+    case OBJ_CLASS: {
+      FREE(OBJ_CLASS, object);
+      break;
+    }
     case OBJ_CLOSURE: {
       ObjClosure* closure = (ObjClosure*)object;
       // free the array we own, just not the entities (we don't own those)

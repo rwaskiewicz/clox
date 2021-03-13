@@ -9,11 +9,14 @@
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
 // Helpers for determining whether or not a Lox object is of a particular type
+#define IS_CLASS(value)    isObjType(value, OBJ_CLASS)
 #define IS_CLOSURE(value)  isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value) isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)   isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)   isObjType(value, OBJ_STRING)
 
+// casts the object to a class
+#define AS_CLASS(value) ((ObjClass*)AS_OBJ(value))
 // casts the obj as an ObjClosure
 #define AS_CLOSURE(value) ((ObjClosure*)AS_OBJ(value))
 // casts the object as an ObjFunction
@@ -29,6 +32,7 @@
  * Describes complex object types
  */
 typedef enum {
+  OBJ_CLASS,
   OBJ_CLOSURE,
   OBJ_FUNCTION,
   OBJ_NATIVE,
@@ -91,6 +95,13 @@ typedef struct {
   int upvalueCount;
 } ObjClosure;
 
+typedef struct {
+  Obj obj;
+  // the name of the class
+  ObjString* name;
+} ObjClass;
+
+ObjClass* newClass(ObjString* name);
 ObjClosure* newClosure(ObjFunction* function);
 ObjFunction* newFunction();
 ObjNative* newNative();
