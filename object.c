@@ -73,8 +73,10 @@ ObjString* allocateString(char* chars, int length, uint32_t hash) {
   string->chars = chars;
   string->hash = hash;
 
+  push(OBJ_VAL(string));
   // automatically intern the string, assuming it hasn't been added yet
   tableSet(&vm.strings, string, NIL_VALUE);
+  pop();
 
   return string;
 }
