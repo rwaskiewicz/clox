@@ -115,6 +115,12 @@ static void blackenObject(Obj* object) {
       markArray(&function->chunk.constants);
       break;
     }
+    case OBJ_INSTANCE: {
+      ObjInstance* instance = (ObjInstance*)object;
+      markObject((Obj*)instance->klass);
+      markTable(&instance->fields);
+      break;
+    }
     case OBJ_UPVALUE: {
       // upvalues have a ref to the closed over value
       markValue(((ObjUpvalue*)object)->closed);
@@ -151,6 +157,12 @@ static void freeObject(Obj* object) {
       ObjFunction* function = (ObjFunction*)object;
       freeChunk(&function->chunk);
       FREE(ObjFunction, object);
+      break;
+    }
+    case OBJ_INSTANCE: {
+      ObjInstance* instance = (ObjInstance*)object;
+      freeTable(&instance->fields);
+      FREE(OBJ_INSTANCE, object);
       break;
     }
     case OBJ_NATIVE: {
