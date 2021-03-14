@@ -345,7 +345,7 @@ static InterpretResult run() {
       }
       case OP_GET_PROPERTY: {
         if (!IS_INSTANCE(peek(0))) {
-          runtimeError("Only instancs have properties.");
+          runtimeError("Only instances have properties.");
           return INTERPRET_RUNTIME_ERROR;
         }
 
