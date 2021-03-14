@@ -343,6 +343,44 @@ static InterpretResult run() {
         *frame->closure->upvalues[slot]->location = peek(0);
         break;
       }
+      case OP_GET_PROPERTY: {
+        if (!IS_INSTANCE(peek(0))) {
+          runtimeError("Only instancs have properties.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+
+        // the expression to the left of the dot has been executed and is at
+        // top of the stack
+        ObjInstance* instance = AS_INSTANCE(peek(0));
+        ObjString* name = READ_STRING();
+
+        Value value;
+        if (tableGet(&instance->fields, name, &value)) {
+          pop(); // Instance.
+          push(value);
+          break;
+        }
+
+        // the field does not exist
+        runtimeError("Undefined property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      case OP_SET_PROPERTY: {
+        if (!IS_INSTANCE(peek(1))) {
+          runtimeError("Only instances have fields.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+
+        // instance who is having the property set
+        ObjInstance* instance = AS_INSTANCE(peek(1));
+        // the value being stored is just above that
+        tableSet(&instance->fields, READ_STRING(), peek(0));
+
+        Value value = pop();
+        pop();
+        push(value);
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
