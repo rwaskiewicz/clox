@@ -37,7 +37,8 @@ typedef enum {
   OP_CLOSURE,       // "invoke a closure"
   OP_CLOSE_UPVALUE, // "move a variable from the stack to the heap"
   OP_RETURN,        // "return from the current function"
-  OP_CLASS,         // "declasre a class"
+  OP_CLASS,         // "declare a class"
+  OP_METHOD,        // "declare a method on a class"
 } OpCode;
 
 typedef struct {

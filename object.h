@@ -104,6 +104,7 @@ typedef struct {
   Obj obj;
   // the name of the class
   ObjString* name;
+  Table methods;
 } ObjClass;
 
 typedef struct {
