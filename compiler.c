@@ -62,6 +62,7 @@ typedef struct {
  */
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_METHOD,
   TYPE_SCRIPT,
 } FunctionType;
 
@@ -85,11 +86,16 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 
+typedef struct ClassCompiler {
+  struct ClassCompiler* enclosing;
+  Token name;
+} ClassCompiler;
+
 Parser parser;
 
 Compiler* current = NULL;
 
-Chunk *compilingChunk;
+ClassCompiler* currentClass = NULL;
 
 /**
  * Return the chunk we're writing
@@ -257,13 +263,20 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   /*
    * The compiler's locals array keeps track of slots used for temporaries
    * (r-values), and local variables. Implicitly allocate slot 0 for the VM's
-   * own use, and give it an empty name so it can't be overwritten
+   * own use
    */
   Local* local = &current->locals[current->localCount++];
   local->depth = 0;
   local->isCaptured = false;
-  local->name.start = "";
-  local->name.length = 0;
+  if (type != TYPE_FUNCTION) {
+    // for methods, repurpose this slot to store the receiver
+    local->name.start = "this";
+    local->name.length = 4;
+  } else {
+    // give it an empty name so it can't be overwritten
+    local->name.start = "";
+    local->name.length = 0;
+  }
 }
 
 static ObjFunction* endCompiler() {
@@ -696,6 +709,19 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+/*
+ * Treat `this` as a lexical variable that _magically_ gets initialized. That
+ * way, things like closures do the 'right thing' for free basically.
+ */
+static void this_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'this' outside of a class.");
+    return;
+  }
+  // don't allow assignment to `this`
+  variable(false);
+}
+
 static void unary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
 
@@ -758,7 +784,7 @@ ParseRule rules[] = {
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_THIS]          = {this_,    NULL,   PREC_NONE},
   [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
   [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
@@ -849,7 +875,7 @@ static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
   uint8_t constant = identifierConstant(&parser.previous);
 
-  FunctionType type = TYPE_FUNCTION;
+  FunctionType type = TYPE_METHOD;
   function(type);
   emitBytes(OP_METHOD, constant);
 }
@@ -863,6 +889,12 @@ static void classDeclaration() {
 
   emitBytes(OP_CLASS, nameConstant);
   defineVariable(nameConstant);
+
+  ClassCompiler classCompiler;
+  classCompiler.name = parser.previous;
+  classCompiler.enclosing = currentClass;
+  currentClass = &classCompiler;
+
   // generate code to load the class name one the stack before compiling methods
   namedVariable(className, false);
 
@@ -875,6 +907,8 @@ static void classDeclaration() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
   // pop the class off stack
   emitByte(OP_POP);
+
+  currentClass = currentClass->enclosing;
 }
 
 /*
