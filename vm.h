@@ -34,6 +34,8 @@ typedef struct {
   Table globals;
   // Table of interned strings
   Table strings;
+  // name of the string used to initialize classes - e.g. `init()` is 'init'
+  ObjString* initString;
   // HEAD pointer to the list of open upvalues
   ObjUpvalue* openUpvalues;
   // Head of our intrusive list for basic memory leak prevention

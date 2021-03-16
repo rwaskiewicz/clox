@@ -1,0 +1,23 @@
+class CoffeeMaker {
+  init(coffee) {
+    this.coffee = coffee;
+  }
+
+  brew() {
+    if (this.coffee == nil) {
+      print "There is no coffee!";
+      return;
+    }
+
+    print "Enjoy your cup of " + this.coffee;
+
+    this.coffee = nil;
+  }
+}
+
+var maker = CoffeeMaker("hot chocolate");
+maker.brew();
+maker.brew();
+// well, what do you expect? we don't allow members to be private
+maker.coffee = "roasted coffee";
+maker.brew();

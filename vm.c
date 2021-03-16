@@ -74,12 +74,16 @@ void initVM() {
   initTable(&vm.globals);
   initTable(&vm.strings);
 
+  vm.initString = NULL; // prevent reading initstring before initialized for GC
+  vm.initString = copyString("init", 4);
+
   defineNative("clock", clockNative);
 }
 
 void freeVM() {
   freeTable(&vm.globals);
   freeTable(&vm.strings);
+  vm.initString = NULL;
   freeObjects();
 }
 
@@ -126,11 +130,23 @@ static bool callValue(Value callee, int argCount) {
         // the top of the stack has all args, and under those is the closure of
         // the called method (slot 0 for the CallFrame)
         vm.stackTop[-argCount - 1] = bound->receiver;
+        Value initializer;
         return (call(bound->method, argCount));
       }
       case OBJ_CLASS: {
         ObjClass* klass = AS_CLASS(callee);
         vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
+        Value initializer;
+        if (tableGet(&klass->methods, vm.initString, &initializer)) {
+          // push a new CallFrame on to the stack for init()
+          // implicitly forward any args to the init method, use `call` to check arity
+          return call(AS_CLOSURE(initializer), argCount);
+        } else if (argCount != 0) {
+          // we don't need to declare init() on a method, but it's an error to
+          // pass a non-zero amount of args to create a class w/o one
+          runtimeError("Expected 0 arguments but got %d.", argCount);
+          return false;
+        }
         return true;
       }
       case OBJ_CLOSURE: {
