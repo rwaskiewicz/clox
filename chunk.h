@@ -39,6 +39,7 @@ typedef enum {
   OP_CLOSE_UPVALUE, // "move a variable from the stack to the heap"
   OP_RETURN,        // "return from the current function"
   OP_CLASS,         // "declare a class"
+  OP_INHERIT,       // "declare inheritance via a superclass clause"
   OP_METHOD,        // "declare a method on a class"
 } OpCode;
 

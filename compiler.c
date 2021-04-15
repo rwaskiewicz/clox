@@ -908,6 +908,21 @@ static void classDeclaration() {
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
+  // detect a superclass clause
+  if (match(TOKEN_LESS)) {
+    consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+    // take the identifer token and treat it as a variable reference, emitting
+    // code to load it's value (so look up the class and push onto the stack)
+    variable(false);
+
+    if (identifiersEqual(&className, &parser.previous)) {
+      error("A class can't inherit from itself.");
+    }
+
+    namedVariable(className, false);
+    emitByte(OP_INHERIT);
+  }
+
   // generate code to load the class name one the stack before compiling methods
   namedVariable(className, false);
 
