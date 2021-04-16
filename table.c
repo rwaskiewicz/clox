@@ -75,7 +75,7 @@ static void adjustCapacity(Table* table, int capacity) {
   Entry *entries = ALLOCATE(Entry, capacity);
   for (int i = 0; i < capacity; i++) {
     entries[i].key = NULL;
-    entries[i].value = NIL_VALUE;
+    entries[i].value = NIL_VAL;
   }
 
   // reset the count - it won't stay the same as we're not going to copy over

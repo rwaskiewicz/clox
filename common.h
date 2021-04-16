@@ -5,6 +5,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Flag for NaN boxing support
+#define NAN_BOXING
+
 // Flag for printing out chunk bytecode
 #define DEBUG_PRINT_CODE
 #undef DEBUG_PRINT_CODE

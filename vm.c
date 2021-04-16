@@ -353,7 +353,7 @@ static InterpretResult run() {
         break;
       }
       case OP_NIL: {
-        push(NIL_VALUE);
+        push(NIL_VAL);
         break;
       }
       case OP_TRUE: {
