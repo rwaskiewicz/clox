@@ -20,6 +20,7 @@ typedef enum {
   OP_SET_UPVALUE,
   OP_GET_PROPERTY,
   OP_SET_PROPERTY,
+  OP_GET_SUPER,
   OP_EQUAL,
   OP_GREATER,
   OP_LESS,
@@ -35,6 +36,7 @@ typedef enum {
   OP_LOOP,          // "while, for loops"
   OP_CALL,          // "invoke a fn"
   OP_INVOKE,        // "combination of property acessor and calling a method - OP_GET_PROPERTY + OP_CALL"
+  OP_SUPER_INVOKE,  // "combination of OP_GET_SUPER + OP_CALL"
   OP_CLOSURE,       // "invoke a closure"
   OP_CLOSE_UPVALUE, // "move a variable from the stack to the heap"
   OP_RETURN,        // "return from the current function"

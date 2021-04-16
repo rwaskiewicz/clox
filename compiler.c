@@ -726,6 +726,36 @@ static Token syntheticToken(const char* text) {
   return token;
 }
 
+static void super_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'super' outside of a class.");
+  } else if (!currentClass->hasSuperclass) {
+    error("Can't use 'super' in a class with no superclass.");
+  }
+
+  consume(TOKEN_DOT, "Expect '.' after 'super'.");
+  consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+  uint8_t name = identifierConstant(&parser.previous);
+
+  // to access a superclass method on the current instance, the runtime needs
+  // the receiver and the super class
+
+  // generate code to look up the current receiver in 'this'
+  namedVariable(syntheticToken("this"), false);
+  // emit code to look up the superclass from 'super'
+  // if we're immediately invoking this, we cna optimize it without heap alloc
+  // an ObjBoundMethod just to discard it. 
+  if (match(TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList();
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_SUPER_INVOKE, name);
+    emitByte(argCount);
+  } else {
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_GET_SUPER, name);
+  }
+}
+
 /*
  * Treat `this` as a lexical variable that _magically_ gets initialized. That
  * way, things like closures do the 'right thing' for free basically.
@@ -800,7 +830,7 @@ ParseRule rules[] = {
   [TOKEN_OR]            = {NULL,     or_,    PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_SUPER]         = {super_,   NULL,   PREC_NONE},
   [TOKEN_THIS]          = {this_,    NULL,   PREC_NONE},
   [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
   [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
@@ -921,27 +951,22 @@ static void classDeclaration() {
   if (match(TOKEN_LESS)) {
     consume(TOKEN_IDENTIFIER, "Expect superclass name.");
     // take the identifer token and treat it as a variable reference, emitting
-    // code to load it's value (so look up the class and push onto the stack)
+    // code to load its value (so look up the class and push onto the stack)
     variable(false);
 
     if (identifiersEqual(&className, &parser.previous)) {
       error("A class can't inherit from itself.");
     }
 
+    beginScope();
+    addLocal(syntheticToken("super"));
+    defineVariable(0);
+    
     namedVariable(className, false);
     emitByte(OP_INHERIT);
     classCompiler.hasSuperclass = true;
   }
-
-  // create a new lexical scope to ensure if two classes at the same scope,
-  // each as a different local slot to store the superclass
-  beginScope();
-  addLocal(syntheticToken("super"));
-  defineVariable(0);
-
-  // generate code to load the class name one the stack before compiling methods
   namedVariable(className, false);
-
   consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
   // lox doesn't have field declarations, so anything before the closing brace
   // must be a method
@@ -949,17 +974,14 @@ static void classDeclaration() {
     method();
   }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
-  // pop the class off stack
   emitByte(OP_POP);
 
-  // we compiled the class body, let's pop the scope to discard the `super` var
   if (classCompiler.hasSuperclass) {
     endScope();
   }
 
   currentClass = currentClass->enclosing;
 }
-
 /*
  * Function declarations differ from variables in that it is safe for a
  * function to refer to its own name in its own body, since you can't call it
