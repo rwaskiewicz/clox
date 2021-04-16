@@ -139,6 +139,8 @@ bool tableDelete(Table* table, ObjString* key) {
   // Pace a tombstone entry
   entry->key = NULL;
   entry->value = BOOL_VAL(true);
+
+  return true;
 }
 
 void tableAddAll(Table* from, Table* to) {
