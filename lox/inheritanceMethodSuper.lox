@@ -1,0 +1,22 @@
+class A {
+  method() {
+    print "A method";
+  }
+}
+
+class B < A {
+  method() {
+    print "B method";
+  }
+
+  test() {
+    super.method();
+  }
+}
+
+class C < B {}
+
+// Method calls are resolved relative to the super class of the surrounding
+// class where the super call occurs. In this case, that surrounding class is B
+// and therefore we resolve to A#method() - therefore, we should print "a method"
+C().test();

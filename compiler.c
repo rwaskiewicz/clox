@@ -90,6 +90,7 @@ typedef struct Compiler {
 typedef struct ClassCompiler {
   struct ClassCompiler* enclosing;
   Token name;
+  bool hasSuperclass;
 } ClassCompiler;
 
 Parser parser;
@@ -718,6 +719,13 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+static Token syntheticToken(const char* text) {
+  Token token;
+  token.start = text;
+  token.length = (int)strlen(text);
+  return token;
+}
+
 /*
  * Treat `this` as a lexical variable that _magically_ gets initialized. That
  * way, things like closures do the 'right thing' for free basically.
@@ -905,6 +913,7 @@ static void classDeclaration() {
 
   ClassCompiler classCompiler;
   classCompiler.name = parser.previous;
+  classCompiler.hasSuperclass = false;
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
@@ -921,7 +930,14 @@ static void classDeclaration() {
 
     namedVariable(className, false);
     emitByte(OP_INHERIT);
+    classCompiler.hasSuperclass = true;
   }
+
+  // create a new lexical scope to ensure if two classes at the same scope,
+  // each as a different local slot to store the superclass
+  beginScope();
+  addLocal(syntheticToken("super"));
+  defineVariable(0);
 
   // generate code to load the class name one the stack before compiling methods
   namedVariable(className, false);
@@ -935,6 +951,11 @@ static void classDeclaration() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
   // pop the class off stack
   emitByte(OP_POP);
+
+  // we compiled the class body, let's pop the scope to discard the `super` var
+  if (classCompiler.hasSuperclass) {
+    endScope();
+  }
 
   currentClass = currentClass->enclosing;
 }
